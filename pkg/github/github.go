@@ -34,7 +34,7 @@ func (c *Client) CleanupPackages(username, packageName string, minRetain int) er
 	var (
 		active  = "active"
 		page    = 1
-		perPage = 1
+		perPage = 25
 		allpkgs = []*github.PackageVersion{}
 	)
 
