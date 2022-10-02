@@ -19,4 +19,4 @@ Flags:
       --username string       github username. e.g. rajatjindal
       --yes                   actually delete the packages
 
-```bash
+```
