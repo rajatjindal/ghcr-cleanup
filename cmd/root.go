@@ -13,7 +13,7 @@ var (
 	token       string
 	username    string
 	packageName string
-	dryrun      bool
+	yes         bool
 	debug       bool
 	minRetain   int
 )
@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 			logrus.SetLevel(logrus.DebugLevel)
 		}
 
-		client := github.NewClient(token, true)
+		client := github.NewClient(token, !yes)
 		err := client.CleanupPackages(username, packageName, minRetain)
 		if err != nil {
 			logrus.Fatal(err)
@@ -46,13 +46,13 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringVar(&token, "token", os.Getenv("GITHUB_TOKEN"), "github token, defaults to env variable GITHUB_TOKEN")
-	rootCmd.Flags().StringVar(&username, "username", "", "rajatjindal")
+	rootCmd.Flags().StringVar(&username, "username", "", "github username. e.g. rajatjindal")
 	rootCmd.MarkFlagRequired("username")
 
-	rootCmd.Flags().StringVar(&packageName, "package-name", "", "translatethread")
+	rootCmd.Flags().StringVar(&packageName, "package-name", "", "image name. e.g. translatethread")
 	rootCmd.MarkFlagRequired("package-name")
 
 	rootCmd.Flags().BoolVar(&debug, "debug", false, "enable debug logging")
-	rootCmd.Flags().BoolVar(&dryrun, "dryrun", true, "run in dry run mode")
+	rootCmd.Flags().BoolVar(&yes, "yes", false, "actually delete the packages")
 	rootCmd.Flags().IntVar(&minRetain, "min-retain", 10, "retain min versions")
 }

@@ -63,7 +63,12 @@ func (c *Client) CleanupPackages(username, packageName string, minRetain int) er
 		return nil
 	}
 
-	logrus.Infof("will be deleting %d versions for %s/%s", len(allpkgs)-minRetain, username, packageName)
+	dryRunMsg := ""
+	if c.dryrun {
+		dryRunMsg = " specify --yes to actually delete"
+	}
+
+	logrus.Infof("will be deleting %d versions for %s/%s.%s", len(allpkgs)-minRetain, username, packageName, dryRunMsg)
 	for i, pkg := range allpkgs {
 		if i < minRetain {
 			continue
