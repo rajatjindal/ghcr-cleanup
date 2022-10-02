@@ -2,10 +2,14 @@ package github
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/google/go-github/v47/github"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
+)
+
+const (
+	packageType = "container"
 )
 
 type Client struct {
@@ -13,10 +17,10 @@ type Client struct {
 	dryrun bool
 }
 
-func NewClient(dryrun bool) *Client {
-	ctx := context.Background()
+func NewClient(token string, dryrun bool) *Client {
+	ctx := context.TODO()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: "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"},
+		&oauth2.Token{AccessToken: token},
 	)
 
 	tc := oauth2.NewClient(ctx, ts)
@@ -26,31 +30,52 @@ func NewClient(dryrun bool) *Client {
 	}
 }
 
-func (c *Client) CleanupPackages(packageName string, minRetain int) error {
-	active := "active"
-	pkgs, _, err := c.github.Users.PackageGetAllVersions(context.TODO(), "rajatjindal", "container", packageName, &github.PackageListOptions{
-		State: &active,
-		ListOptions: github.ListOptions{
-			Page:    1,
-			PerPage: 100,
-		},
-	})
-	if err != nil {
-		return err
+func (c *Client) CleanupPackages(username, packageName string, minRetain int) error {
+	var (
+		active  = "active"
+		page    = 1
+		perPage = 1
+		allpkgs = []*github.PackageVersion{}
+	)
+
+	for {
+		pkgs, resp, err := c.github.Users.PackageGetAllVersions(context.TODO(), username, packageType, packageName, &github.PackageListOptions{
+			State: &active,
+			ListOptions: github.ListOptions{
+				Page:    page,
+				PerPage: perPage,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		allpkgs = append(allpkgs, pkgs...)
+		if resp.NextPage == 0 {
+			break
+		}
+
+		page = resp.NextPage
 	}
 
-	for i, pkg := range pkgs {
+	if len(allpkgs) <= minRetain {
+		logrus.Infof("found %d versions for %s/%s which is less than min retain configuration value of %d", len(allpkgs), username, packageName, minRetain)
+		return nil
+	}
+
+	logrus.Infof("will be deleting %d versions for %s/%s", len(allpkgs)-minRetain, username, packageName)
+	for i, pkg := range allpkgs {
 		if i < minRetain {
 			continue
 		}
 
-		fmt.Printf("deleting %#v\n", pkg.GetMetadata().Container.Tags)
+		logrus.Debugf("deleting %#v\n", pkg.GetMetadata().Container.Tags)
 
 		if c.dryrun {
 			continue
 		}
 
-		_, err = c.github.Users.PackageDeleteVersion(context.TODO(), "rajatjindal", "container", packageName, pkg.GetID())
+		_, err := c.github.Users.PackageDeleteVersion(context.TODO(), username, packageType, packageName, pkg.GetID())
 		if err != nil {
 			return err
 		}
